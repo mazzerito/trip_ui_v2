@@ -1,0 +1,280 @@
+import 'package:flutter/material.dart';
+import 'package:trip_vibes_ui_v2/services/authService.dart';
+import '../../models/trips.dart'; // Make sure to import your TripService  // Import your Trip model
+
+class AddTripScreenDummy extends StatefulWidget {
+  @override
+  _AddTripScreenState createState() => _AddTripScreenState();
+}
+
+class _AddTripScreenState extends State<AddTripScreenDummy> {
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _budgetController = TextEditingController();
+  final TextEditingController _peopleController = TextEditingController();
+  DateTime? _startDate;
+  DateTime? _endDate;
+
+@override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    _budgetController.dispose();
+    _peopleController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveTrip() async {
+  final Trip newTrip = Trip(
+    tripTitle: _titleController.text,
+    description: _descriptionController.text,
+    tripBudget: double.tryParse(_budgetController.text) ?? 0.0,
+    tripPeople: _peopleController.text,
+    startDate: _startDate ?? DateTime.now(),
+    endDate: _endDate ?? DateTime.now().add(Duration(days: 1)),
+  );
+
+  // Convert Trip to Map
+  final Map<String, dynamic> tripData = {
+    'title': newTrip.tripTitle,
+    'description': newTrip.description,
+    'budget': newTrip.tripBudget,
+    'people': newTrip.tripPeople,
+    'startDate': newTrip.startDate?.toIso8601String(),
+    'endDate': newTrip.endDate?.toIso8601String(),
+  };
+
+  try {
+    // Ensure to pass userId as an int
+    int userId = 1; // Replace this with your actual user ID retrieval logic
+    final response = await AuthService().createTrip(userId, tripData);
+
+    if (response['statusCode'] == 200) {
+      // Successfully saved the trip
+      Navigator.pop(context); // Go back to the previous screen after saving
+    } else {
+      // Handle errors based on status code
+      throw Exception('Failed to save trip: ${response['body']}');
+    }
+  } catch (e) {
+    // Handle error (show a Snackbar or AlertDialog)
+    print('Error saving trip: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Failed to save trip: $e')),
+    );
+  }
+}
+
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          "Add New Trip",
+          style: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
+        ),
+        backgroundColor: Theme.of(context).primaryColor,
+        elevation: 0,
+        centerTitle: true,
+        leading: IconButton(
+          icon: Icon(
+            Icons.arrow_back,
+            color: Theme.of(context).colorScheme.onPrimary,
+          ),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
+      ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          double padding = constraints.maxWidth * 0.05;
+          return SingleChildScrollView(
+            padding: EdgeInsets.symmetric(horizontal: padding, vertical: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'New trip',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 10),
+                _buildTextField('Trip title', _titleController),
+                _buildTextField('Description', _descriptionController),
+                _buildTextField('Trip budget', _budgetController),
+                _buildTextField('People joining the trip', _peopleController),
+                _buildDateField(
+                  'Start date',
+                  _startDate,
+                  () => _selectDate(context, true), // Select start date
+                ),
+                _buildDateField(
+                  'End date',
+                  _endDate,
+                  () => _selectDate(context, false), // Select end date
+                ),
+                SizedBox(height: 15),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildButton(
+                      context,
+                      label: 'Cancel',
+                      color: Colors.orange,
+                      textColor: Colors.white,
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                    ),
+                    _buildButton(
+                      context,
+                      label: 'Save',
+                      color: Color(0xff5100F2),
+                      textColor: Colors.white,
+                      onPressed: _saveTrip,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.only(bottom: 1.0),
+        child: FloatingActionButton(
+          onPressed: () {
+            Navigator.pushNamed(context, '/trip');
+          },
+          backgroundColor: Theme.of(context).colorScheme.onPrimary,
+          child: Icon(Icons.home, color: Theme.of(context).primaryColor),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField(String hint, TextEditingController controller) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6.0),
+      child: TextField(
+        controller: controller,
+        decoration: InputDecoration(
+          contentPadding: EdgeInsets.symmetric(horizontal: 10.0),
+          hintText: hint,
+          hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(30),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          filled: true,
+          fillColor: Colors.grey.shade100,
+        ),
+      ),
+    );
+  }
+
+
+  Widget _buildButton(
+    BuildContext context, {
+    required String label,
+    required Color color,
+    required Color textColor,
+    required VoidCallback onPressed,
+  }) {
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+      ),
+      onPressed: onPressed,
+      child: Text(
+        label,
+        style: TextStyle(color: textColor, fontSize: 16),
+      ),
+    );
+  }
+
+  Future<void> _selectDate(BuildContext context, bool isStartDate) async {
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: isStartDate ? _startDate ?? DateTime.now() : _endDate ?? DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+    );
+    if (pickedDate != null) {
+      setState(() {
+        if (isStartDate) {
+          _startDate = pickedDate;
+        } else {
+          _endDate = pickedDate;
+        }
+      });
+    }
+  }
+
+  // Widget _buildDateField(String label, DateTime? date, VoidCallback onTap) {
+  //   return Padding(
+  //     padding: const EdgeInsets.symmetric(vertical: 6.0),
+  //     child: GestureDetector(
+  //       onTap: onTap,
+  //       child: TextField(
+  //         readOnly: true,
+  //         decoration: InputDecoration(
+  //           contentPadding: EdgeInsets.symmetric(horizontal: 10.0),
+  //           hintText: label,
+  //           hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
+  //           border: OutlineInputBorder(
+  //             borderRadius: BorderRadius.circular(30),
+  //             borderSide: BorderSide(color: Colors.grey.shade300),
+  //           ),
+  //           filled: true,
+  //           fillColor: Colors.grey.shade100,
+  //           suffixIcon: Icon(Icons.calendar_today),
+  //         ),
+  //         controller: TextEditingController(
+  //           text: date != null ? "${date.toLocal()}".split(' ')[0] : '',
+  //         ),
+  //       ),
+  //     ),
+  //   );
+  // }
+
+  Widget _buildDateField(String label, DateTime? date, VoidCallback onTap) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 6.0),
+    child: GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(color: Colors.black),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              date != null ? "${date.toLocal()}".split(' ')[0] : label,
+              style: TextStyle(
+                color: date != null ? Colors.black : Colors.grey,
+                fontSize: 14,
+              ),
+            ),
+            Icon(Icons.calendar_today, color: Colors.grey),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+
+}

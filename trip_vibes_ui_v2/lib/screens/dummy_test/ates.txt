@@ -1,0 +1,76 @@
+import 'package:flutter/material.dart';
+import 'trip_service.dart';
+
+class TripDetailsScreen extends StatefulWidget {
+  final int tripId;
+
+  TripDetailsScreen({required this.tripId});
+
+  @override
+  State<TripDetailsScreen> createState() => _TripDetailsScreenState();
+}
+
+class _TripDetailsScreenState extends State<TripDetailsScreen> {
+  final TripService tripService = TripService();
+
+  void _confirmDelete(BuildContext context) async {
+    // Show a confirmation dialog before deleting
+    final bool? deleteConfirmed = await showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: Text('Confirm Delete'),
+          content: Text('Are you sure you want to delete this trip?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop(false); // Cancelled
+              },
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop(true); // Confirmed
+              },
+              child: Text('Delete', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+
+    // If the user confirmed deletion, call the delete function
+    if (deleteConfirmed == true) {
+      _deleteTrip(context);
+    }
+  }
+
+  void _deleteTrip(BuildContext context) async {
+    final response = await tripService.deleteTrip(widget.tripId);
+
+    if (response['statusCode'] == 200) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Trip deleted successfully')),
+      );
+      Navigator.of(context).pop(); // Go back to the previous screen
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to delete trip: ${response['body']['message']}')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Trip Details')),
+      body: Center(
+        child: ElevatedButton(
+          onPressed: () => _confirmDelete(context),
+          child: Text('Delete Trip'),
+          style: ElevatedButton.styleFrom(primary: Colors.red),
+        ),
+      ),
+    );
+  }
+}
